@@ -19,6 +19,8 @@ services:
     restart: always
     depends_on:
       - nginx-proxy
+    volumes_from:
+      - nginx-proxy
     volumes:
       - certs:/etc/nginx/certs
       - html:/usr/share/nginx/html
