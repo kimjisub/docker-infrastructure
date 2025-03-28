@@ -1,0 +1,32 @@
+services:
+  nginx:
+    image: nginx
+    environment:
+      - VIRTUAL_HOST=my.custom.domain
+      - LETSENCRYPT_HOST=my.custom.domain
+    restart: always
+    networks:
+      - proxy
+    volumes:
+      - type: bind
+        source: ./public
+        target: /usr/share/nginx/html
+
+  my-app:
+    image: my-app:latest
+    networks:
+      - default
+      - proxy
+    ports:
+      - 80
+    environment:
+      - VIRTUAL_HOST=my.app.domain
+      - LETSENCRYPT_HOST=my.app.domain
+    restart: unless-stopped
+    labels:
+      - 'com.centurylinklabs.watchtower.enable=true'
+
+networks:
+  proxy:
+    external: true
+    name: proxy

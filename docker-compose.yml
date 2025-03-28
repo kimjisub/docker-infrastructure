@@ -1,18 +1,33 @@
 services:
-  nginx-proxy-manager:
-    image: 'jc21/nginx-proxy-manager:latest'
-    restart: unless-stopped
+  nginx-proxy:
+    image: nginxproxy/nginx-proxy
+    container_name: nginx-proxy
+    restart: always
     ports:
-      - '80:80'
-      - '81:81'
-      - '443:443'
+      - 80:80
+      - 443:443
     volumes:
-      - ./data:/data
-      - ./letsencrypt:/etc/letsencrypt
+      - certs:/etc/nginx/certs
+      - vhost:/etc/nginx/vhost.d
+      - html:/usr/share/nginx/html
+      - /var/run/docker.sock:/tmp/docker.sock:ro
     networks:
       - proxy
-    extra_hosts:
-      - 'host.docker.internal:host-gateway'
+
+  nginx-proxy-acme:
+    image: nginxproxy/acme-companion
+    container_name: nginx-proxy-acme
+    restart: always
+    volumes_from:
+      - nginx-proxy
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - acme:/etc/acme.sh
+    networks:
+      - proxy
+    environment:
+      - DEFAULT_EMAIL=${ACME_EMAIL}
+
   watchtower:
     image: containrrr/watchtower
     restart: unless-stopped
@@ -25,6 +40,32 @@ services:
       - WATCHTOWER_TRAGE=true
       - WATCHTOWER_POLL_INTERVAL=60
       - WATCHTOWER_REGISTRY_AUTH=true
+
+volumes:
+  certs:
+    driver: local
+    driver_opts:
+      type: none
+      device: ./volumes/certs
+      o: bind
+  vhost:
+    driver: local
+    driver_opts:
+      type: none
+      device: ./volumes/vhost
+      o: bind
+  html:
+    driver: local
+    driver_opts:
+      type: none
+      device: ./volumes/html
+      o: bind
+  acme:
+    driver: local
+    driver_opts:
+      type: none
+      device: ./volumes/acme
+      o: bind
 
 networks:
   proxy:

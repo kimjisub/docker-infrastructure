@@ -1,42 +1,51 @@
 # docker-infrastructure
 
+1. let's encrypt 인증서를 http 서버에 연결하여 https 통신이 가능하도록 합니다.
+2. watchtower 를 사용하여 컨테이너를 자동으로 업데이트 합니다.
+3. 컨테이너 로그가 디스크를 꽉 채우지 않도록 최대 3개의 파일을 유지합니다.
+
 ## Docker Installation
 
 ```bash
-#!/bin/bash
+./scripts/docker-install.sh
+```
 
-# Docker 설치를 위한 패키지 업데이트
-sudo apt-get update
+## Registry Login (ghcr.io)
 
-# HTTPS를 통해 저장소를 사용할 수 있도록 패키지 설치
-sudo apt-get install \
-    apt-transport-https \
-    ca-certificates \
-    curl \
-    software-properties-common
+GitHub의 Personal access token을 사용하여 GitHub Container Registry(ghcr.io)에 Docker로 로그인하려면 다음 단계를 따르세요:
 
-# Docker의 공식 GPG 키 추가
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+> Fine-Grained Personal Access Token(FGPAT)는 Package 권한을 제어할 수 없어서, Classic PAT를 사용합니다.
 
-# Docker 저장소를 APT 소스에 추가
-sudo add-apt-repository \
-   "deb [arch=amd64] https://download.docker.com/linux/ubuntu \
-   $(lsb_release -cs) \
-   stable"
+### 1. Classic PAT 생성
 
-# Docker 패키지 업데이트
-sudo apt-get update
+ 1. GitHub에서 로그인 후 Settings로 이동.
+ 2. Developer settings > Personal access tokens > Generate new token 버튼 클릭.
+ 3. `read:packages` 권한 체크.
+ 4. 생성된 토큰을 복사하여 저장(나중에 확인 불가).
 
-# Docker CE(Community Edition) 설치
-sudo apt-get install docker-ce
+### 2. Docker 로그인
 
-# Docker가 정상적으로 설치되었는지 버전 확인
-docker --version
+터미널에서 다음 명령어 실행:
 
-# Docker 그룹에 사용자 추가
-sudo usermod -aG docker $USER
+```bash
+echo "<YOUR_FINE_GRAINED_PAT>" | docker login ghcr.io -u <YOUR_GITHUB_USERNAME> --password-stdin
+```
 
-# ssh 재접속
+- <YOUR_FINE_GRAINED_PAT>: 생성한 Fine-Grained Personal Access Token.
+- <YOUR_GITHUB_USERNAME>: GitHub 사용자 이름.
+
+### 3. Docker 이미지 Pull 또는 Push
+
+- 이미지 Pull:
+
+```bash
+docker pull ghcr.io/<YOUR_USERNAME>/<IMAGE_NAME>:<TAG>
+```
+
+## Github Login
+
+```bash
+git config --global credential.helper store
 ```
 
 ## `~/.docker/config.json`
@@ -45,11 +54,17 @@ host machine의 docker hub 인증 정보를 watchtower 에서도 공유해서 �
 
 ```json
 {
-  "auths": {
-    "https://index.docker.io/v1/": {
-      "auth": "c3VwZXJzZWNyZXQ6c3VwZXJzZWNyZXQ="
-    }
+ "auths": {
+  "https://index.docker.io/v1/": {
+    "auth": "<Docker Hub 인증 토큰>"
+  },
+  "000000000000.dkr.ecr.ap-northeast-2.amazonaws.com": {
+   "auth": "<ECR 인증 토큰>"
+  },
+  "ghcr.io": {
+   "auth": "<Github Container Registry 인증 토큰>"
   }
+ }
 }
 ```
 
@@ -59,4 +74,72 @@ host machine의 docker hub 인증 정보를 watchtower 에서도 공유해서 �
 
 ```bash
 docker network create proxy
+```
+
+## Run
+
+```bash
+docker compose up -d
+```
+
+## nginx proxy manager
+
+Email:    <admin@example.com>
+Password: changeme
+
+## docker-compose.yml example
+
+```yaml
+services:
+  mysql:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: 'service-db'
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      LC_ALL: C.UTF-8
+    expose:
+      - 3306
+    volumes:
+      - mysql:/var/lib/mysql
+      - ./mysql/init.d:/docker-entrypoint-initdb.d
+  redis:
+    image: redis:7.2.5
+    restart: unless-stopped
+    expose:
+      - 6379
+  my-service:
+    image: ghcr.io/my-org/my-service:latest
+    networks:
+      - default
+      - proxy
+    expose:
+      - 8080
+    depends_on:
+      - mysql
+      - redis
+    restart: unless-stopped
+    command: ['java', '-jar', 'app.jar']
+    environment:
+      SPRING_DATASOURCE_URL: 'jdbc:mysql://mysql:3306/service-db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul&characterEncoding=UTF-8'
+      SPRING_DATASOURCE_USERNAME: ${DB_USER}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+      SPRING_JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
+      SPRING_JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      SPRING_JWT_PASSWORD_RESET_SECRET: ${JWT_PASSWORD_RESET_SECRET}
+    labels:
+      - 'com.centurylinklabs.watchtower.enable=true'
+
+volumes:
+  mysql:
+    driver: local
+
+networks:
+  proxy:
+    external: true
+    name: proxy
 ```
