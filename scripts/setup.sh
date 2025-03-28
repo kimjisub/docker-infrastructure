@@ -110,7 +110,7 @@ if ask_confirmation "Do you want to create Docker network?" "y" "true"; then
   docker network create proxy
 fi
 
-mkdir -p volumes/{certs,vhost,html,acme}
+mkdir -p volumes/{certs,html,acme}
 
 # Ask before starting Docker Compose
 if ask_confirmation "Do you want to start Docker Compose?" "y" "false"; then

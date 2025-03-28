@@ -8,7 +8,6 @@ services:
       - 443:443
     volumes:
       - certs:/etc/nginx/certs
-      - vhost:/etc/nginx/vhost.d
       - html:/usr/share/nginx/html
       - /var/run/docker.sock:/tmp/docker.sock:ro
     networks:
@@ -18,11 +17,13 @@ services:
     image: nginxproxy/acme-companion
     container_name: nginx-proxy-acme
     restart: always
-    volumes_from:
+    depends_on:
       - nginx-proxy
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - certs:/etc/nginx/certs
+      - html:/usr/share/nginx/html
       - acme:/etc/acme.sh
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
       - proxy
     environment:
@@ -38,7 +39,7 @@ services:
     environment:
       - WATCHTOWER_CLEANUP=true
       - WATCHTOWER_LABEL_ENABLE=true
-      - WATCHTOWER_TRAGE=true
+      - WATCHTOWER_TRACE=true
       - WATCHTOWER_POLL_INTERVAL=60
       - WATCHTOWER_REGISTRY_AUTH=true
 
@@ -48,12 +49,6 @@ volumes:
     driver_opts:
       type: none
       device: ./volumes/certs
-      o: bind
-  vhost:
-    driver: local
-    driver_opts:
-      type: none
-      device: ./volumes/vhost
       o: bind
   html:
     driver: local
