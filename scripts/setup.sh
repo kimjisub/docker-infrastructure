@@ -95,13 +95,13 @@ ask_confirmation() {
 echo "Docker Installation Setup"
 if ask_confirmation "Do you want to install Docker?" "y" "true"; then
   echo "Installing Docker..."
-  ./docker-install.sh
+  ./scripts/docker-install.sh
 fi
 
 # Ask before setting up log retention
 if ask_confirmation "Do you want to configure Docker log retention?" "y" "false"; then
   echo "Configuring Docker log retention..."
-  ./docker-log-retention.sh
+  ./scripts/docker-log-retention.sh
 fi
 
 # Ask for network type
@@ -110,7 +110,7 @@ if ask_confirmation "Do you want to create Docker network?" "y" "true"; then
   docker network create proxy
 fi
 
-mkdir -p volumes
+mkdir -p volumes/{certs,vhost,html,acme}
 
 # Ask before starting Docker Compose
 if ask_confirmation "Do you want to start Docker Compose?" "y" "false"; then
