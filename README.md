@@ -82,64 +82,8 @@ docker network create proxy
 docker compose up -d
 ```
 
-## nginx proxy manager
-
-Email:    <admin@example.com>
-Password: changeme
-
 ## docker-compose.yml example
 
-```yaml
-services:
-  mysql:
-    image: mysql:8.0
-    restart: unless-stopped
-    environment:
-      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
-      MYSQL_DATABASE: 'service-db'
-      MYSQL_USER: ${DB_USER}
-      MYSQL_PASSWORD: ${DB_PASSWORD}
-      LC_ALL: C.UTF-8
-    expose:
-      - 3306
-    volumes:
-      - mysql:/var/lib/mysql
-      - ./mysql/init.d:/docker-entrypoint-initdb.d
-  redis:
-    image: redis:7.2.5
-    restart: unless-stopped
-    expose:
-      - 6379
-  my-service:
-    image: ghcr.io/my-org/my-service:latest
-    networks:
-      - default
-      - proxy
-    expose:
-      - 8080
-    depends_on:
-      - mysql
-      - redis
-    restart: unless-stopped
-    command: ['java', '-jar', 'app.jar']
-    environment:
-      SPRING_DATASOURCE_URL: 'jdbc:mysql://mysql:3306/service-db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul&characterEncoding=UTF-8'
-      SPRING_DATASOURCE_USERNAME: ${DB_USER}
-      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
-      SPRING_REDIS_HOST: redis
-      SPRING_REDIS_PORT: 6379
-      SPRING_JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
-      SPRING_JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
-      SPRING_JWT_PASSWORD_RESET_SECRET: ${JWT_PASSWORD_RESET_SECRET}
-    labels:
-      - 'com.centurylinklabs.watchtower.enable=true'
 
-volumes:
-  mysql:
-    driver: local
+[docker-compose.yml](./example/docker-compose.yml)
 
-networks:
-  proxy:
-    external: true
-    name: proxy
-```
